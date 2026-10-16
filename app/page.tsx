@@ -141,13 +141,13 @@ export default function DashboardPage() {
           {can(session, "reset") ? (
             <button
               onClick={() => {
-                if (confirm("Reset ke data contoh awal? Nota yang kamu buat di browser ini akan hilang.")) {
+                if (confirm("Kosongkan semua nota, stok, dan tim di perangkat ini? Tidak bisa dibatalkan.")) {
                   resetData();
                 }
               }}
               className="mt-6 text-left font-[family-name:var(--font-mono)] text-[10px] tracking-wide text-[#737373] hover:text-[#111111]"
             >
-              Reset data contoh
+              Kosongkan semua data
             </button>
           ) : null}
         </section>

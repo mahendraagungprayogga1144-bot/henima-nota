@@ -142,6 +142,10 @@ export default function BuatNotaPage() {
               <Field label="Sales closing">
                 {session?.role === "sales" ? (
                   <p className="border border-[#e5e5e5] px-3 py-2.5 text-sm">{session.actorName}</p>
+                ) : state.sales.length === 0 ? (
+                  <p className="border border-[#e5e5e5] px-3 py-2.5 text-sm text-[#737373]">
+                    Belum ada sales. Isi dulu di menu Tim Sales.
+                  </p>
                 ) : (
                   <select className={inputClass} value={salesId} onChange={(e) => setSalesId(e.target.value)}>
                     {state.sales.map((s) => (
@@ -159,8 +163,11 @@ export default function BuatNotaPage() {
             <h2 className="mb-4 font-[family-name:var(--font-mono)] text-[11px] tracking-[0.16em] uppercase text-[#737373]">
               Produk
             </h2>
+            {state.products.length === 0 ? (
+              <p className="mb-4 text-sm text-[#737373]">Belum ada produk. Tambah barang dulu di menu Stok.</p>
+            ) : null}
             <div className="mb-4 grid gap-3 sm:grid-cols-[1fr_100px_auto]">
-              <select className={inputClass} value={pickId} onChange={(e) => setPickId(e.target.value)}>
+              <select className={inputClass} value={pickId} onChange={(e) => setPickId(e.target.value)} disabled={state.products.length === 0}>
                 {state.products.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name} · {p.size} · sisa {p.stock}

@@ -43,6 +43,13 @@ export function Gate({ children }: { children: React.ReactNode }) {
     signIn({ role, actorName, salesId: null, leaderId: null });
   }
 
+  const canEnter =
+    role === "admin" || role === "gudang"
+      ? true
+      : role === "sales"
+        ? Boolean(salesId && state.sales.length)
+        : Boolean(leaderId && state.leaders.length);
+
   return (
     <div className="flex min-h-full items-center justify-center bg-white px-4 py-16">
       <div className="w-full max-w-md border border-[#e5e5e5] p-8">
@@ -68,6 +75,11 @@ export function Gate({ children }: { children: React.ReactNode }) {
 
         <div className="mt-5 space-y-3">
           {role === "sales" ? (
+            state.sales.length === 0 ? (
+              <p className="text-sm text-[#737373]">
+                Belum ada sales. Masuk sebagai admin dulu, lalu isi di Tim Sales.
+              </p>
+            ) : (
             <Field label="Nama sales">
               <select className={inputClass} value={salesId} onChange={(e) => setSalesId(e.target.value)}>
                 {state.sales.map((s) => (
@@ -77,8 +89,14 @@ export function Gate({ children }: { children: React.ReactNode }) {
                 ))}
               </select>
             </Field>
+            )
           ) : null}
           {role === "leader" ? (
+            state.leaders.length === 0 ? (
+              <p className="text-sm text-[#737373]">
+                Belum ada leader. Masuk sebagai admin dulu, lalu isi di Tim Sales.
+              </p>
+            ) : (
             <Field label="Nama leader">
               <select className={inputClass} value={leaderId} onChange={(e) => setLeaderId(e.target.value)}>
                 {state.leaders.map((l) => (
@@ -88,6 +106,7 @@ export function Gate({ children }: { children: React.ReactNode }) {
                 ))}
               </select>
             </Field>
+            )
           ) : null}
           {role === "admin" || role === "gudang" ? (
             <Field label="Nama kamu">
@@ -101,7 +120,7 @@ export function Gate({ children }: { children: React.ReactNode }) {
           ) : null}
         </div>
 
-        <Button className="mt-6 w-full" onClick={enter}>
+        <Button className="mt-6 w-full" onClick={enter} disabled={!canEnter}>
           Mulai kerja
         </Button>
         <p className="mt-4 text-center text-xs text-[#737373]">

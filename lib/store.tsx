@@ -40,12 +40,18 @@ type StoreContextValue = {
   addStock: (productId: string, qty: number, note: string) => void;
   removeStock: (productId: string, qty: number, note: string) => void;
   addProduct: (input: NewProductInput) => void;
+  updateProduct: (id: string, input: NewProductInput) => void;
+  removeProduct: (id: string) => void;
   addLeader: (name: string) => void;
+  updateLeader: (id: string, name: string) => void;
+  removeLeader: (id: string) => void;
   addSales: (name: string, leaderId: string | null) => void;
+  updateSales: (id: string, name: string, leaderId: string | null) => void;
+  removeSales: (id: string) => void;
   resetData: () => void;
 };
 
-const SESSION_KEY = "henima-session-v1";
+const SESSION_KEY = "henima-session-v2";
 const sessionListeners = new Set<() => void>();
 let sessionSnap: Session | null = null;
 let sessionLoaded = false;
@@ -396,6 +402,32 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     commit(withLog({ ...prev, leaders: [...prev.leaders, { id: uid("led"), name: trimmed }] }, "Tambah leader", trimmed));
   }, []);
 
+  const updateLeader = useCallback((id: string, name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) throw new Error("Nama leader wajib diisi.");
+    const prev = getClientSnapshot();
+    if (!prev.leaders.some((row) => row.id === id)) throw new Error("Leader tidak ditemukan.");
+    commit(
+      withLog(
+        { ...prev, leaders: prev.leaders.map((row) => (row.id === id ? { ...row, name: trimmed } : row)) },
+        "Ubah leader",
+        trimmed,
+      ),
+    );
+  }, []);
+
+  const removeLeader = useCallback((id: string) => {
+    const prev = getClientSnapshot();
+    const leader = prev.leaders.find((row) => row.id === id);
+    if (!leader) throw new Error("Leader tidak ditemukan.");
+    if (prev.sales.some((row) => row.leaderId === id)) {
+      throw new Error("Masih ada sales di bawah leader ini. Pindahkan dulu.");
+    }
+    commit(
+      withLog({ ...prev, leaders: prev.leaders.filter((row) => row.id !== id) }, "Hapus leader", leader.name),
+    );
+  }, []);
+
   const addSales = useCallback((name: string, leaderId: string | null) => {
     const trimmed = name.trim();
     if (!trimmed) throw new Error("Nama sales wajib diisi.");
@@ -407,6 +439,33 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         trimmed,
       ),
     );
+  }, []);
+
+  const updateSales = useCallback((id: string, name: string, leaderId: string | null) => {
+    const trimmed = name.trim();
+    if (!trimmed) throw new Error("Nama sales wajib diisi.");
+    const prev = getClientSnapshot();
+    if (!prev.sales.some((row) => row.id === id)) throw new Error("Sales tidak ditemukan.");
+    commit(
+      withLog(
+        {
+          ...prev,
+          sales: prev.sales.map((row) => (row.id === id ? { ...row, name: trimmed, leaderId } : row)),
+        },
+        "Ubah sales",
+        trimmed,
+      ),
+    );
+  }, []);
+
+  const removeSales = useCallback((id: string) => {
+    const prev = getClientSnapshot();
+    const person = prev.sales.find((row) => row.id === id);
+    if (!person) throw new Error("Sales tidak ditemukan.");
+    if (prev.invoices.some((row) => row.salesId === id)) {
+      throw new Error("Sales ini sudah punya nota. Ubah namanya saja, jangan dihapus.");
+    }
+    commit(withLog({ ...prev, sales: prev.sales.filter((row) => row.id !== id) }, "Hapus sales", person.name));
   }, []);
 
   const addStock = useCallback((productId: string, qty: number, note: string) => {
@@ -464,6 +523,57 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const updateProduct = useCallback((id: string, input: NewProductInput) => {
+    const prev = getClientSnapshot();
+    const current = prev.products.find((row) => row.id === id);
+    if (!current) throw new Error("Produk tidak ditemukan.");
+    const sku = input.sku.trim().toUpperCase();
+    if (!sku || !input.name.trim()) throw new Error("SKU dan nama wajib diisi.");
+    if (prev.products.some((row) => row.sku === sku && row.id !== id)) throw new Error("SKU sudah dipakai.");
+    commit(
+      withLog(
+        {
+          ...prev,
+          products: prev.products.map((row) =>
+            row.id === id
+              ? {
+                  ...row,
+                  sku,
+                  name: input.name.trim(),
+                  size: input.size.trim() || "—",
+                  unit: input.unit.trim() || "pcs",
+                  minStock: Math.max(0, input.minStock),
+                  price: Math.max(0, input.price),
+                }
+              : row,
+          ),
+        },
+        "Ubah produk",
+        input.name.trim(),
+      ),
+    );
+  }, []);
+
+  const removeProduct = useCallback((id: string) => {
+    const prev = getClientSnapshot();
+    const product = prev.products.find((row) => row.id === id);
+    if (!product) throw new Error("Produk tidak ditemukan.");
+    if (prev.invoices.some((inv) => inv.items.some((item) => item.productId === id))) {
+      throw new Error("Produk sudah ada di nota. Ubah saja datanya, jangan dihapus.");
+    }
+    commit(
+      withLog(
+        {
+          ...prev,
+          products: prev.products.filter((row) => row.id !== id),
+          movements: prev.movements.filter((row) => row.productId !== id),
+        },
+        "Hapus produk",
+        product.name,
+      ),
+    );
+  }, []);
+
   const resetData = useCallback(() => {
     commit(createSeed());
   }, []);
@@ -485,11 +595,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addStock,
       removeStock,
       addProduct,
+      updateProduct,
+      removeProduct,
       addLeader,
+      updateLeader,
+      removeLeader,
       addSales,
+      updateSales,
+      removeSales,
       resetData,
     }),
-    [ready, state, session, signIn, signInEmail, signUpEmail, signOut, createInvoice, cancelInvoice, returnInvoice, recordPayment, addStock, removeStock, addProduct, addLeader, addSales, resetData],
+    [ready, state, session, signIn, signInEmail, signUpEmail, signOut, createInvoice, cancelInvoice, returnInvoice, recordPayment, addStock, removeStock, addProduct, updateProduct, removeProduct, addLeader, updateLeader, removeLeader, addSales, updateSales, removeSales, resetData],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

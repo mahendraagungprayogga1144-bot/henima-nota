@@ -138,25 +138,3 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
-
-insert into public.leaders (id, name) values
-  ('L1', 'Raka Putra'),
-  ('L2', 'Sinta Maharani')
-on conflict (id) do nothing;
-
-insert into public.sales_people (id, name, leader_id) values
-  ('S0', 'Counter Henima', null),
-  ('S1', 'Andi Wijaya', 'L1'),
-  ('S2', 'Dina Lestari', 'L1'),
-  ('S3', 'Bagas Pratama', 'L2'),
-  ('S4', 'Maya Kusuma', 'L2')
-on conflict (id) do nothing;
-
-insert into public.products (id, sku, name, size, unit, stock, min_stock, price) values
-  ('P1', 'HEN-NOIR-50', 'Signature Noir', '50ml', 'botol', 42, 10, 189000),
-  ('P2', 'HEN-BLNC-50', 'Signature Blanc', '50ml', 'botol', 35, 10, 189000),
-  ('P3', 'HEN-ROSE-50', 'Signature Rose', '50ml', 'botol', 28, 8, 199000),
-  ('P4', 'HEN-OUD-50', 'Oud Atelier', '50ml', 'botol', 18, 6, 249000),
-  ('P5', 'HEN-DISC', 'Discovery Set', '5×5ml', 'set', 12, 5, 129000),
-  ('P6', 'HEN-GIFT', 'Gift Set Duo', '2×30ml', 'set', 8, 4, 279000)
-on conflict (id) do nothing;

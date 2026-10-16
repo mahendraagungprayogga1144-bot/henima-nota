@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PageTitle, StatCard } from "@/components/ui";
+import { EmptyState, PageTitle, StatCard } from "@/components/ui";
 import { scopeInvoices } from "@/lib/access";
 import { formatRp, invoiceTotal, sameMonth, isCountable } from "@/lib/format";
 import { useStore } from "@/lib/store";
@@ -90,6 +90,9 @@ export default function KinerjaPage() {
       <h2 className="mb-4 font-[family-name:var(--font-mono)] text-[11px] tracking-[0.16em] uppercase text-[#737373]">
         Per sales
       </h2>
+      {ranked.length === 0 ? (
+        <EmptyState title="Belum ada sales" body="Tambah tim di menu Tim Sales. Omzet muncul setelah ada nota." />
+      ) : (
       <div className="mb-10 overflow-x-auto border border-[#e5e5e5]">
         <table className="w-full min-w-[700px] text-left text-sm">
           <thead className="bg-[#f7f7f7] font-[family-name:var(--font-mono)] text-[10px] tracking-[0.14em] uppercase text-[#737373]">
@@ -116,10 +119,14 @@ export default function KinerjaPage() {
           </tbody>
         </table>
       </div>
+      )}
 
       <h2 className="mb-4 font-[family-name:var(--font-mono)] text-[11px] tracking-[0.16em] uppercase text-[#737373]">
         Per leader
       </h2>
+      {leaders.length === 0 ? (
+        <EmptyState title="Belum ada angka leader" body="Muncul setelah ada sales dan nota." />
+      ) : (
       <div className="overflow-x-auto border border-[#e5e5e5]">
         <table className="w-full min-w-[520px] text-left text-sm">
           <thead className="bg-[#f7f7f7] font-[family-name:var(--font-mono)] text-[10px] tracking-[0.14em] uppercase text-[#737373]">
@@ -142,6 +149,7 @@ export default function KinerjaPage() {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }

@@ -14,24 +14,26 @@ import { can } from "@/lib/access";
 import { formatDateTime, formatRp } from "@/lib/format";
 import { useStore } from "@/lib/store";
 
-type ModalKind = "masuk" | "keluar" | "produk" | null;
+type ModalKind = "masuk" | "keluar" | "produk" | "ubah" | null;
+
+const emptyProductForm = {
+  productId: "",
+  qty: "1",
+  note: "",
+  sku: "",
+  name: "",
+  size: "",
+  unit: "pcs",
+  stock: "0",
+  minStock: "0",
+  price: "0",
+};
 
 export default function StokPage() {
-  const { state, session, addStock, removeStock, addProduct } = useStore();
+  const { state, session, addStock, removeStock, addProduct, updateProduct, removeProduct } = useStore();
   const [modal, setModal] = useState<ModalKind>(null);
   const [error, setError] = useState("");
-  const [form, setForm] = useState({
-    productId: "",
-    qty: "1",
-    note: "",
-    sku: "",
-    name: "",
-    size: "50ml",
-    unit: "botol",
-    stock: "0",
-    minStock: "5",
-    price: "189000",
-  });
+  const [form, setForm] = useState(emptyProductForm);
 
   const productMap = useMemo(
     () => Object.fromEntries(state.products.map((p) => [p.id, p])),
@@ -58,7 +60,7 @@ export default function StokPage() {
   function submitProduct() {
     setError("");
     try {
-      addProduct({
+      const payload = {
         sku: form.sku,
         name: form.name,
         size: form.size,
@@ -66,10 +68,12 @@ export default function StokPage() {
         stock: Number(form.stock),
         minStock: Number(form.minStock),
         price: Number(form.price),
-      });
+      };
+      if (modal === "ubah") updateProduct(form.productId, payload);
+      else addProduct(payload);
       close();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal menambah produk");
+      setError(err instanceof Error ? err.message : "Gagal menyimpan produk");
     }
   }
 
@@ -88,7 +92,7 @@ export default function StokPage() {
             <Button variant="ghost" onClick={() => { setForm((f) => ({ ...f, productId: state.products[0]?.id ?? "", qty: "10", note: "Restock" })); setModal("masuk"); }}>
               Masuk
             </Button>
-            <Button onClick={() => { setForm((f) => ({ ...f, sku: "", name: "", stock: "0" })); setModal("produk"); }}>
+            <Button onClick={() => { setForm(emptyProductForm); setModal("produk"); }}>
               Produk baru
             </Button>
           </div>
@@ -106,10 +110,18 @@ export default function StokPage() {
               <th className="px-4 py-3 text-right">Harga</th>
               <th className="px-4 py-3 text-right">Stok</th>
               <th className="px-4 py-3">Status</th>
+              {can(session, "stock") ? <th className="px-4 py-3" /> : null}
             </tr>
           </thead>
           <tbody>
-            {state.products.map((p) => {
+            {state.products.length === 0 ? (
+              <tr>
+                <td className="px-4 py-10" colSpan={can(session, "stock") ? 7 : 6}>
+                  <EmptyState title="Belum ada produk" body="Tambah barang Henima lewat tombol Produk baru. Harga dan nama bisa diubah kapan saja." />
+                </td>
+              </tr>
+            ) : (
+              state.products.map((p) => {
               const low = p.stock <= p.minStock;
               return (
                 <tr key={p.id} className="border-t border-[#e5e5e5]">
@@ -135,12 +147,51 @@ export default function StokPage() {
                       </span>
                     )}
                   </td>
+                  {can(session, "stock") ? (
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex justify-end gap-3 font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-wider">
+                        <button
+                          className="text-[#737373] hover:text-[#111111]"
+                          onClick={() => {
+                            setForm({
+                              ...emptyProductForm,
+                              productId: p.id,
+                              sku: p.sku,
+                              name: p.name,
+                              size: p.size === "—" ? "" : p.size,
+                              unit: p.unit,
+                              minStock: String(p.minStock),
+                              price: String(p.price),
+                            });
+                            setModal("ubah");
+                          }}
+                        >
+                          Ubah
+                        </button>
+                        <button
+                          className="text-[#737373] hover:text-[#111111]"
+                          onClick={() => {
+                            setError("");
+                            try {
+                              removeProduct(p.id);
+                            } catch (err) {
+                              setError(err instanceof Error ? err.message : "Gagal menghapus");
+                            }
+                          }}
+                        >
+                          Hapus
+                        </button>
+                      </div>
+                    </td>
+                  ) : null}
                 </tr>
               );
-            })}
+            })
+            )}
           </tbody>
         </table>
       </div>
+      {error && !modal ? <p className="mt-3 text-sm">{error}</p> : null}
 
       <h2 className="mt-10 mb-4 font-[family-name:var(--font-mono)] text-[11px] tracking-[0.16em] uppercase text-[#737373]">
         Mutasi stok
@@ -217,8 +268,8 @@ export default function StokPage() {
         </Modal>
       ) : null}
 
-      {modal === "produk" ? (
-        <Modal title="Produk baru" onClose={close}>
+      {modal === "produk" || modal === "ubah" ? (
+        <Modal title={modal === "ubah" ? "Ubah produk" : "Produk baru"} onClose={close}>
           <div className="space-y-3">
             <Field label="SKU">
               <input className={inputClass} value={form.sku} onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))} placeholder="HEN-XXXX" />
@@ -234,6 +285,7 @@ export default function StokPage() {
                 <input className={inputClass} value={form.unit} onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))} />
               </Field>
             </div>
+            {modal === "produk" ? (
             <div className="grid grid-cols-2 gap-3">
               <Field label="Stok awal">
                 <input className={inputClass} type="number" value={form.stock} onChange={(e) => setForm((f) => ({ ...f, stock: e.target.value }))} />
@@ -242,6 +294,11 @@ export default function StokPage() {
                 <input className={inputClass} type="number" value={form.minStock} onChange={(e) => setForm((f) => ({ ...f, minStock: e.target.value }))} />
               </Field>
             </div>
+            ) : (
+              <Field label="Min. stok">
+                <input className={inputClass} type="number" value={form.minStock} onChange={(e) => setForm((f) => ({ ...f, minStock: e.target.value }))} />
+              </Field>
+            )}
             <Field label="Harga jual">
               <input className={inputClass} type="number" value={form.price} onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))} />
             </Field>
